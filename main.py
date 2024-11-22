@@ -4,6 +4,10 @@ import subprocess
 import sys
 import glob
 import pyfiglet
+from colorama import Fore, Style, init
+
+# Initialize colorama
+init(autoreset=True)
 
 def get_installed_version(library_name):
     """Returns the installed version of a library using pip."""
@@ -15,7 +19,7 @@ def get_installed_version(library_name):
                     return line.split("Version:")[1].strip()
         return None
     except Exception as e:
-        print(f"Error checking version for {library_name}: {e}")
+        print(Fore.RED + f"Error checking version for {library_name}: {e}")
         return None
 
 def extract_imports_from_file(file_path):
@@ -45,82 +49,82 @@ def generate_requirements_txt(file_path, output_file='requirements.txt'):
         if version:
             requirements.append(f"{library}=={version}")
         else:
-            print(f"Warning: Could not find version for {library}")
+            print(Fore.YELLOW + f"Warning: Could not find version for {library}")
     
     # Step 3: Write the requirements.txt file
     if requirements:
         with open(output_file, 'w') as f:
             f.write("\n".join(requirements) + "\n")
-        print(f"requirements.txt has been created at {output_file}")
+        print(Fore.GREEN + f"requirements.txt has been created at {output_file}")
     else:
-        print("No requirements to write.")
+        print(Fore.RED + "No requirements to write.")
 
 def find_python_files_in_directory(directory):
     """Finds all Python (.py) files in the given directory."""
     return glob.glob(os.path.join(directory, '**', '*.py'), recursive=True)
 
 def display_logo():
-    """Displays the CyberFantics logo using pyfiglet."""
+    """Displays the CyberFantics logo using pyfiglet with color."""
     logo = pyfiglet.figlet_format("CyberFantics")
-    print(logo)
+    print(Fore.CYAN + logo)
 
 def main():
     """Main function to run the menu and execute actions based on user input."""
     display_logo()
     
-    print("Welcome to CyberFantics Python Dependency Generator!")
+    print(Fore.GREEN + "Welcome to CyberFantics Python Dependency Generator!")
     
     while True:
-        print("\nMenu:")
-        print("1. Get imports from a project folder and create a requirements.txt file")
-        print("2. Generate requirements.txt for a specific Python file")
-        print("3. Exit")
+        print(Fore.YELLOW + "\nMenu:")
+        print(Fore.CYAN + "1. Get imports from a project folder and create a requirements.txt file")
+        print(Fore.CYAN + "2. Generate requirements.txt for a specific Python file")
+        print(Fore.RED + "3. Exit")
         
-        choice = input("Enter your choice (1/2/3): ").strip()
+        choice = input(Fore.MAGENTA + "Enter your choice (1/2/3): ").strip()
         
         if choice == '1':
             # Ask the user for the project folder
-            project_folder = input("Enter the path of your project folder: ").strip()
+            project_folder = input(Fore.MAGENTA + "Enter the path of your project folder: ").strip()
             if not os.path.isdir(project_folder):
-                print("Invalid folder path. Please try again.")
+                print(Fore.RED + "Invalid folder path. Please try again.")
                 continue
 
             # Find all Python files in the directory
             python_files = find_python_files_in_directory(project_folder)
             if not python_files:
-                print("No Python files found in the specified folder.")
+                print(Fore.RED + "No Python files found in the specified folder.")
                 continue
             
-            print(f"\nFound {len(python_files)} Python files in the project folder.")
-            print("Generating requirements.txt for the entire project...")
+            print(Fore.GREEN + f"\nFound {len(python_files)} Python files in the project folder.")
+            print(Fore.GREEN + "Generating requirements.txt for the entire project...")
 
             # Create a requirements.txt file in the project folder
             requirements_path = os.path.join(project_folder, 'requirements.txt')
             with open(requirements_path, 'w') as req_file:
                 for py_file in python_files:
-                    print(f"Processing {py_file}...")
+                    print(Fore.CYAN + f"Processing {py_file}...")
                     imports = extract_imports_from_file(py_file)
                     for library in imports:
                         version = get_installed_version(library)
                         if version:
                             req_file.write(f"{library}=={version}\n")
-            print(f"requirements.txt has been generated at {requirements_path}")
+            print(Fore.GREEN + f"requirements.txt has been generated at {requirements_path}")
         
         elif choice == '2':
             # Ask for a specific file
-            file_path = input("Enter the path of the Python file: ").strip()
+            file_path = input(Fore.MAGENTA + "Enter the path of the Python file: ").strip()
             if not os.path.isfile(file_path):
-                print("Invalid file path. Please try again.")
+                print(Fore.RED + "Invalid file path. Please try again.")
                 continue
 
             # Generate the requirements.txt for the given file
             generate_requirements_txt(file_path, os.path.join(os.path.dirname(file_path), 'requirements.txt'))
 
         elif choice == '3':
-            print("Exiting the program...")
+            print(Fore.RED + "Exiting the program...")
             break
         else:
-            print("Invalid choice. Please try again.")
+            print(Fore.RED + "Invalid choice. Please try again.")
 
 if __name__ == "__main__":
     main()
