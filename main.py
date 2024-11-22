@@ -6,12 +6,17 @@ import glob
 import pyfiglet
 from colorama import Fore, Style, init
 import pkgutil
+from tqdm import tqdm
 
 # Initialize colorama
 init(autoreset=True)
 
 # List of standard libraries (dynamically determined)
 STANDARD_LIBRARIES = {module.name for module in pkgutil.iter_modules() if module.module_finder.path == ''}
+
+def clear_screen():
+    """Clears the terminal screen."""
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 def get_installed_version(library_name):
     """Returns the installed version of a library using pip."""
@@ -47,21 +52,24 @@ def extract_imports_from_file(file_path):
 
 def generate_requirements_txt(file_path, output_file='requirements.txt'):
     """Generates a requirements.txt file based on the imports in a Python file."""
-    # Step 1: Extract the imports
     imports = extract_imports_from_file(file_path)
     filtered_imports = [lib for lib in imports if lib not in STANDARD_LIBRARIES]
 
-    # Step 2: Check the versions of the imported libraries
     requirements = []
-    for library in filtered_imports:
+    for library in tqdm(filtered_imports, desc="Checking library versions"):
         version = get_installed_version(library)
         if version:
             requirements.append(f"{library}=={version}")
         else:
             print(Fore.YELLOW + f"Warning: Could not determine version for {library} (it might not be installed).")
     
-    # Step 3: Write the requirements.txt file
     if requirements:
+        if os.path.exists(output_file):
+            confirm = input(Fore.RED + f"{output_file} already exists. Overwrite? (y/n): ").strip().lower()
+            if confirm != 'y':
+                print(Fore.YELLOW + "Operation cancelled.")
+                return
+
         try:
             with open(output_file, 'w') as f:
                 f.write("\n".join(requirements) + "\n")
@@ -69,7 +77,7 @@ def generate_requirements_txt(file_path, output_file='requirements.txt'):
         except Exception as e:
             print(Fore.RED + f"Failed to write requirements.txt: {e}")
     else:
-        print(Fore.RED + "No requirements to write (no third-party libraries detected).")
+        print(Fore.RED + "No third-party libraries detected.")
 
 def find_python_files_in_directory(directory):
     """Finds all Python (.py) files in the given directory."""
@@ -77,45 +85,54 @@ def find_python_files_in_directory(directory):
 
 def display_logo():
     """Displays the CyberFantics logo using pyfiglet with color."""
+    clear_screen()
     logo = pyfiglet.figlet_format("CyberFantics")
     print(Fore.CYAN + logo)
+
+def search_python_files(directory):
+    """Search for specific Python files in a directory."""
+    search_term = input(Fore.MAGENTA + "Enter the filename or keyword to search for: ").strip()
+    python_files = find_python_files_in_directory(directory)
+    results = [file for file in python_files if search_term in os.path.basename(file)]
+    
+    if results:
+        print(Fore.GREEN + f"Found {len(results)} matching files:")
+        for idx, file in enumerate(results, 1):
+            print(Fore.CYAN + f"{idx}. {file}")
+    else:
+        print(Fore.RED + "No matching files found.")
 
 def main():
     """Main function to run the menu and execute actions based on user input."""
     display_logo()
-    
-    print(Fore.GREEN + "Welcome to the Advanced CyberFantics Python Dependency Generator!")
+    print(Fore.GREEN + "\nWelcome to the Interactive CyberFantics Python Dependency Generator!")
+    input(Fore.YELLOW + "Press Enter to start...")
     
     while True:
+        display_logo()
         print(Fore.YELLOW + "\nMenu:")
         print(Fore.CYAN + "1. Generate requirements.txt for an entire project folder")
         print(Fore.CYAN + "2. Generate requirements.txt for a specific Python file")
-        print(Fore.CYAN + "3. Display standard libraries (excluded by default)")
-        print(Fore.RED + "4. Exit")
+        print(Fore.CYAN + "3. Search for Python files in a folder")
+        print(Fore.CYAN + "4. Display standard libraries (excluded by default)")
+        print(Fore.RED + "5. Exit")
         
-        choice = input(Fore.MAGENTA + "Enter your choice (1/2/3/4): ").strip()
-        
+        choice = input(Fore.MAGENTA + "Enter your choice (1/2/3/4/5): ").strip()
         if choice == '1':
-            # Ask the user for the project folder
             project_folder = input(Fore.MAGENTA + "Enter the path of your project folder: ").strip()
             if not os.path.isdir(project_folder):
                 print(Fore.RED + "Invalid folder path. Please try again.")
                 continue
 
-            # Find all Python files in the directory
             python_files = find_python_files_in_directory(project_folder)
             if not python_files:
                 print(Fore.RED + "No Python files found in the specified folder.")
                 continue
             
-            print(Fore.GREEN + f"\nFound {len(python_files)} Python files in the project folder.")
-            print(Fore.GREEN + "Generating requirements.txt for the entire project...")
-
-            # Create a requirements.txt file in the project folder
+            print(Fore.GREEN + f"\nFound {len(python_files)} Python files.")
             requirements_path = os.path.join(project_folder, 'requirements.txt')
             all_imports = set()
-            for py_file in python_files:
-                print(Fore.CYAN + f"Processing {py_file}...")
+            for py_file in tqdm(python_files, desc="Processing files"):
                 all_imports.update(extract_imports_from_file(py_file))
             
             filtered_imports = [lib for lib in all_imports if lib not in STANDARD_LIBRARIES]
@@ -130,25 +147,40 @@ def main():
             print(Fore.GREEN + f"requirements.txt has been generated at {requirements_path}")
         
         elif choice == '2':
-            # Ask for a specific file
             file_path = input(Fore.MAGENTA + "Enter the path of the Python file: ").strip()
             if not os.path.isfile(file_path):
                 print(Fore.RED + "Invalid file path. Please try again.")
                 continue
 
-            # Generate the requirements.txt for the given file
             output_path = os.path.join(os.path.dirname(file_path), 'requirements.txt')
             generate_requirements_txt(file_path, output_path)
-
+        
         elif choice == '3':
+            folder_path = input(Fore.MAGENTA + "Enter the path of the folder: ").strip()
+            if not os.path.isdir(folder_path):
+                print(Fore.RED + "Invalid folder path. Please try again.")
+                input()
+                continue
+            search_python_files(folder_path)
+            input()
+        
+        elif choice == '4':
             print(Fore.CYAN + "Standard Libraries (excluded from requirements.txt):")
             print(Fore.MAGENTA + ", ".join(sorted(STANDARD_LIBRARIES)))
+            print('-'*50)
+            input()
 
-        elif choice == '4':
-            print(Fore.RED + "Exiting the program...")
+        elif choice == '5':
+            display_logo()
+            print(Fore.GREEN + "Thank you for using CyberFantics Dependency Generator!")
+            input()
             break
+        
         else:
             print(Fore.RED + "Invalid choice. Please try again.")
+            input()
+        input(Fore.YELLOW + "Press Enter to return to the menu...")
+
 
 if __name__ == "__main__":
     main()
